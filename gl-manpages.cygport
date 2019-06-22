@@ -1,0 +1,49 @@
+NAME="gl-manpages"
+VERSION="20190426git8acb9c7"
+RELEASE="1"
+ARCH="noarch"
+
+GIT_URI="https://github.com/KhronosGroup/OpenGL-Refpages.git"
+GIT_REV=${VERSION##*git}
+inherit git
+SRC_URI+="opengl-manpages-pre.xsl opengl-manpages.xsl"
+
+HOMEPAGE="https://www.khronos.org/"
+LICENSE="SGI Free Software License B, Open Publication License"
+CATEGORY="Doc"
+SUMMARY="OpenGL manpages"
+DESCRIPTION="GL, GLU and GLX manpages"
+
+DEPEND="docbook-mathml docbook-xsl libxslt"
+DIFF_EXCLUDES="opengl-manpages-pre.xsl"
+
+# gl2.1 = OpenGL 2.1 (including GLU, GLX and fixed functionality)
+# es3   = OpenGL ES 3.x (will always be the latest ES, currently 3.2)
+# gl4   = OpenGL 4.x (current) API and GLSL pages
+
+# TODO: building gl4 manpages requires docbook 5, so not done yet. Will still
+# need to build gl2.1 manpages (mostly superseded, but needed for GLU, GLX and
+# fixed-function pages dropped in gl4)
+
+XSLT="xsltproc --nonet --xinclude"
+DATE=${VERSION%%git*}
+DATE=${DATE:0:4}-${DATE:4:2}-${DATE:6:2}
+
+src_compile() {
+    sed -i s#UPSTREAM_DATE#${DATE}# ${S}/opengl-manpages-pre.xsl
+    cd ${B}
+    for d in gl2.1; do
+        mkdir -p ${B}/$d
+        cd ${B}/$d
+        for f in ${S}/$d/*.xml; do
+            ${XSLT} ${S}/opengl-manpages-pre.xsl $f | ${XSLT} --param refentry.meta.get.quietly 1 ${S}/opengl-manpages.xsl -
+        done
+    done
+}
+
+src_install() {
+    for d in gl2.1; do
+        cd ${B}/$d
+        doman *.3G
+    done
+}
